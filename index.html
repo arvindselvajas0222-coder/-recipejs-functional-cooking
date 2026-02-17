@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecipeJS - Your Functional Cooking Companion</title>
+
+    <!-- CSS File -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <h1>🍳 RecipeJS</h1>
+        <p>Your Functional Cooking Companion</p>
+    </header>
+
+    <!-- Controls Section -->
+    <section class="controls">
+        <div class="filter-group">
+            <h3>Filter Recipes</h3>
+            <button data-filter="all" class="active">Show All</button>
+            <button data-filter="easy">Easy</button>
+            <button data-filter="medium">Medium</button>
+            <button data-filter="hard">Hard</button>
+            <button data-filter="quick">Quick (Under 30 min)</button>
+        </div>
+
+        <div class="sort-group">
+            <h3>Sort Recipes</h3>
+            <button data-sort="none" class="active">Default Order</button>
+            <button data-sort="name">Name (A–Z)</button>
+            <button data-sort="time">Time (Fastest First)</button>
+        </div>
+    </section>
+
+    <!-- Main Section -->
+    <main>
+        <div id="recipe-container">
+            <!-- Recipe cards will be rendered here by JavaScript -->
+        </div>
+    </main>
+
+    <!-- JavaScript File -->
+    <script src="app.js"></script>
+</body>
+</html>
+
