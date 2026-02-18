@@ -14,6 +14,10 @@
     <header>
         <h1>🍳 RecipeJS</h1>
         <p>Your Functional Cooking Companion</p>
+        <div class="search-bar">
+            <input id="search-input" type="search" placeholder="Search recipes or ingredients..." aria-label="Search recipes">
+            <button id="clear-search" aria-label="Clear search">✕</button>
+        </div>
     </header>
 
     <!-- Controls Section -->
@@ -25,6 +29,7 @@
             <button data-filter="medium">Medium</button>
             <button data-filter="hard">Hard</button>
             <button data-filter="quick">Quick (Under 30 min)</button>
+            <button data-filter="favorites">Favorites Only</button>
         </div>
 
         <div class="sort-group">

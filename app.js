@@ -129,11 +129,17 @@ const RecipeApp = (function() {
   // ----- State -----
   let currentFilter = 'all';
   let currentSort = 'none';
+  let searchQuery = '';
+  let favorites = [];
+  let debounceTimer = null;
 
   // DOM refs (populated on init)
   let recipeContainer;
   let filterButtons;
   let sortButtons;
+  let searchInput;
+  let clearSearchBtn;
+  let recipeCounter;
 
   // ----- Pure Helpers -----
   const filterByDifficulty = (list, difficulty) => list.filter(r => r.difficulty === difficulty);
@@ -142,6 +148,7 @@ const RecipeApp = (function() {
     switch (filterType) {
       case 'easy': case 'medium': case 'hard': return filterByDifficulty(list, filterType);
       case 'quick': return filterByTime(list, 30);
+      case 'favorites': return list.filter(r => favorites.includes(r.id));
       case 'all': default: return list;
     }
   };
@@ -184,6 +191,7 @@ const RecipeApp = (function() {
         <div class="card-controls" style="margin-top:.6rem;">
           <button class="toggle-btn" data-toggle="ingredients" data-recipe-id="${r.id}">Show Ingredients</button>
           <button class="toggle-btn" data-toggle="steps" data-recipe-id="${r.id}">Show Steps</button>
+          <button class="fav-btn ${favorites.includes(r.id) ? 'favorited' : ''}" data-recipe-id="${r.id}" aria-label="Toggle favorite">♥</button>
         </div>
         <div class="ingredients-container" data-recipe-id="${r.id}">
           <ul>
@@ -210,11 +218,20 @@ const RecipeApp = (function() {
 
   const updateDisplay = () => {
     let list = recipes;
+    // Search narrows first
+    if (searchQuery && searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase().trim();
+      const ingredientMatch = (r) => r.ingredients.some(i => i.toLowerCase().includes(q));
+      const titleMatch = (r) => r.title.toLowerCase().includes(q);
+      const descriptionMatch = (r) => (r.description || '').toLowerCase().includes(q);
+      list = list.filter(r => titleMatch(r) || ingredientMatch(r) || descriptionMatch(r));
+    }
     list = applyFilter(list, currentFilter);
     list = applySort(list, currentSort);
     renderRecipes(list);
     updateActiveButtons();
-    console.log(`Displaying ${list.length} recipes (Filter: ${currentFilter}, Sort: ${currentSort})`);
+    updateCounter(list.length, recipes.length);
+    console.log(`Displaying ${list.length} recipes (Filter: ${currentFilter}, Sort: ${currentSort}, Search: "${searchQuery}")`);
   };
 
   // ----- Event Handlers -----
@@ -234,14 +251,24 @@ const RecipeApp = (function() {
 
   // Event delegation for toggle buttons inside recipe container
   const handleToggleClick = (e) => {
-    const btn = e.target.closest('.toggle-btn');
-    if (!btn) return;
-    const recipeId = btn.dataset.recipeId;
-    const toggleType = btn.dataset.toggle; // 'steps' or 'ingredients'
-    const container = document.querySelector(`.${toggleType}-container[data-recipe-id="${recipeId}"]`);
-    if (!container) return;
-    container.classList.toggle('visible');
-    btn.textContent = container.classList.contains('visible') ? `Hide ${toggleType.charAt(0).toUpperCase()+toggleType.slice(1)}` : `Show ${toggleType.charAt(0).toUpperCase()+toggleType.slice(1)}`;
+    // Toggle ingredient/steps or handle favorite button
+    const toggleBtn = e.target.closest('.toggle-btn');
+    if (toggleBtn) {
+      const recipeId = toggleBtn.dataset.recipeId;
+      const toggleType = toggleBtn.dataset.toggle; // 'steps' or 'ingredients'
+      const container = document.querySelector(`.${toggleType}-container[data-recipe-id="${recipeId}"]`);
+      if (!container) return;
+      container.classList.toggle('visible');
+      toggleBtn.textContent = container.classList.contains('visible') ? `Hide ${toggleType.charAt(0).toUpperCase()+toggleType.slice(1)}` : `Show ${toggleType.charAt(0).toUpperCase()+toggleType.slice(1)}`;
+      return;
+    }
+
+    const favBtn = e.target.closest('.fav-btn');
+    if (favBtn) {
+      const id = Number(favBtn.dataset.recipeId);
+      toggleFavorite(id);
+      return;
+    }
   };
 
   // ----- Setup Listeners -----
@@ -251,8 +278,60 @@ const RecipeApp = (function() {
     filterButtons.forEach(b => b.addEventListener('click', handleFilterClick));
     sortButtons.forEach(b => b.addEventListener('click', handleSortClick));
 
-    // Delegated listener for toggle buttons
+    // Search elements
+    searchInput = document.getElementById('search-input');
+    clearSearchBtn = document.getElementById('clear-search');
+    recipeCounter = document.getElementById('recipe-counter');
+
+    // Delegated listener for toggle buttons and favorite button
     recipeContainer.addEventListener('click', handleToggleClick);
+
+    // Search handlers
+    searchInput.addEventListener('input', handleSearchInput);
+    clearSearchBtn.addEventListener('click', handleClearSearch);
+  };
+
+  // ----- Counter -----
+  const updateCounter = (visible, total) => {
+    if (!recipeCounter) return;
+    recipeCounter.textContent = `Showing ${visible} of ${total} recipes`;
+  };
+
+  // ----- Favorites Management -----
+  const loadFavorites = () => {
+    try {
+      const raw = localStorage.getItem('recipeFavorites') || '[]';
+      favorites = JSON.parse(raw);
+    } catch (err) {
+      favorites = [];
+    }
+  };
+
+  const saveFavorites = () => {
+    try { localStorage.setItem('recipeFavorites', JSON.stringify(favorites)); } catch (e) { /* ignore */ }
+  };
+
+  const toggleFavorite = (id) => {
+    const idx = favorites.indexOf(id);
+    if (idx === -1) favorites.push(id); else favorites.splice(idx, 1);
+    saveFavorites();
+    updateDisplay();
+  };
+
+  // ----- Search Handlers (debounced) -----
+  const handleSearchInput = (e) => {
+    const val = e.target.value;
+    searchQuery = val;
+    clearSearchBtn.style.display = val && val.trim() !== '' ? 'inline-block' : 'none';
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => { updateDisplay(); }, 300);
+  };
+
+  const handleClearSearch = () => {
+    if (searchInput) searchInput.value = '';
+    searchQuery = '';
+    clearSearchBtn.style.display = 'none';
+    updateDisplay();
   };
 
   // ----- Public API -----
@@ -264,9 +343,16 @@ const RecipeApp = (function() {
         console.error('No #recipe-container element found.');
         return;
       }
+      // ensure counter exists in DOM
+      if (!document.getElementById('recipe-counter')) {
+        const c = document.createElement('div');
+        c.id = 'recipe-counter';
+        recipeContainer.parentNode.insertBefore(c, recipeContainer);
+      }
+      loadFavorites();
       setupEventListeners();
       updateDisplay();
-      console.log('RecipeApp ready!');
+      console.log('RecipeApp ready! Favorites loaded:', favorites);
     },
     updateDisplay: updateDisplay
   };

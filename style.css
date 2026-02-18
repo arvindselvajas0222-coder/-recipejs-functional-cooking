@@ -186,3 +186,55 @@ main {
 .steps .steps {
     margin-top: .3rem;
 }
+
+/* ===== Search Bar ===== */
+.search-bar {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+.search-bar input[type="search"] {
+    width: 320px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+}
+.search-bar button#clear-search {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    color: #666;
+    padding: 6px 8px;
+    display: none;
+}
+
+/* ===== Favorite Button ===== */
+.fav-btn {
+    border: none;
+    background: transparent;
+    font-size: 1.15rem;
+    cursor: pointer;
+    color: #c0c0c0;
+    margin-left: 8px;
+}
+.fav-btn.favorited {
+    color: #e74c3c;
+}
+
+/* ===== Recipe Counter ===== */
+#recipe-counter {
+    text-align: center;
+    margin: 1rem 0 1.5rem 0;
+    color: #444;
+    font-weight: 600;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 720px) {
+    .search-bar input[type="search"] { width: 100%; }
+    .recipe-card { width: calc(100% - 2rem); }
+    #recipe-container { gap: 1rem; }
+}
